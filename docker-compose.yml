@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+
+  mongo:
+    image: bitnami/mongodb
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - ${MONGODB_PORT}:27017
+    volumes:
+      - mongo-data:/bitnami/mongodb
+  
+
+volumes:
+  mongo-data:
