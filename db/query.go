@@ -25,9 +25,9 @@ func NewID() primitive.ObjectID {
 	return primitive.NewObjectID()
 }
 
-func FindByID(l *logrus.Entry, mongo *mongo.Client, id primitive.ObjectID) (*Ingredient, error) {
+func FindByID(l *logrus.Entry, mongo *mongo.Client, id string) (*Ingredient, error) {
 	collection := mongo.Database("catalog").Collection("ingredient")
-	filter := map[string]primitive.ObjectID{"_id": id}
+	filter := map[string]string{"_id": id}
 	var ingredient Ingredient
 	err := collection.FindOne(context.Background(), filter).Decode(&ingredient)
 	if err != nil {

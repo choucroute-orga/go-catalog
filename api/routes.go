@@ -75,18 +75,9 @@ func (api *ApiHandler) getIngredientByID(c echo.Context) error {
 	// Retrieve the ingredient ID from the path
 	id := c.Param("id")
 
-	// Convert the ID to an ObjectID
-	idObj, err := primitive.ObjectIDFromHex(id)
-
-	if err != nil {
-		WarnOnError(l, err, "Invalid ID")
-		return NewBadRequestError(err)
-	}
-
 	// Find the ingredient
-	ingredient, err := db.FindByID(l, api.mongo, idObj)
+	ingredient, err := db.FindByID(l, api.mongo, id)
 	if err != nil {
-		WarnOnError(l, err, "Find by ID failed")
 		return NewNotFoundError(err)
 	}
 
