@@ -29,6 +29,7 @@ func (api *ApiHandler) Register(v1 *echo.Group, conf *configuration.Configuratio
 
 	ingredient := v1.Group("/ingredient")
 	ingredient.POST("", api.postIngredient)
+	ingredient.GET("", api.getIngredients)
 	ingredient.PUT("/:id", api.putIngredient)
 	ingredient.GET("/:id", api.getIngredientByID)
 	ingredient.GET("/type/:type", api.getIngredientByType)

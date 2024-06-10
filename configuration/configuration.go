@@ -16,11 +16,7 @@ type Configuration struct {
 	ListenAddress       string
 	ListenRoute         string
 	LogLevel            string
-	DBHost              string
-	DBPort              string
-	DBUser              string
-	DBName              string
-	DBPassword          string
+	DBURI               string
 	TranslateValidation bool
 	JWTSecret           string
 }
@@ -44,11 +40,7 @@ func New() *Configuration {
 	conf.ListenAddress = os.Getenv("API_ADDRESS")
 	conf.ListenRoute = os.Getenv("API_ROUTE")
 
-	conf.DBHost = os.Getenv("MONGODB_HOST")
-	conf.DBPort = os.Getenv("MONGODB_PORT")
-	conf.DBUser = os.Getenv("MONGODB_USERNAME")
-	conf.DBName = os.Getenv("MONGODB_DATABASE")
-	conf.DBPassword = os.Getenv("MONGODB_PASSWORD")
+	conf.DBURI = os.Getenv("MONGODB_URI")
 
 	conf.TranslateValidation, err = strconv.ParseBool(os.Getenv("TRANSLATE_VALIDATION"))
 

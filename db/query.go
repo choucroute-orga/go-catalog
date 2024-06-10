@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -35,6 +36,22 @@ func FindByID(l *logrus.Entry, mongo *mongo.Client, id string) (*Ingredient, err
 		return nil, err
 	}
 	return &ingredient, nil
+}
+
+func FindAllIngredients(l *logrus.Entry, mongo *mongo.Client) (*[]Ingredient, error) {
+	collection := mongo.Database("catalog").Collection("ingredient")
+	cursor, err := collection.Find(context.Background(), bson.M{})
+	if err != nil {
+		l.WithError(err).Error("Error when trying to find all recipes")
+		return nil, err
+	}
+	var ingredients []Ingredient
+	err = cursor.All(context.Background(), &ingredients)
+	if err != nil {
+		l.WithError(err).Error("Error when trying to decode all recipes")
+		return nil, err
+	}
+	return &ingredients, nil
 }
 
 func FindByName(l *logrus.Entry, mongo *mongo.Client, name string) (*Ingredient, error) {

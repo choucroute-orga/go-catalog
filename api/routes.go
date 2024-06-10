@@ -70,6 +70,15 @@ func (api *ApiHandler) postIngredient(c echo.Context) error {
 
 }
 
+func (api *ApiHandler) getIngredients(c echo.Context) error {
+	l := logger.WithField("request", "getIngredients")
+	recipes, err := db.FindAllIngredients(l, api.mongo)
+	if err != nil {
+		return NewNotFoundError(err)
+	}
+	return c.JSON(http.StatusOK, recipes)
+}
+
 func (api *ApiHandler) getIngredientByID(c echo.Context) error {
 	l := logger.WithField("request", "getIngredient")
 	// Retrieve the ingredient ID from the path
