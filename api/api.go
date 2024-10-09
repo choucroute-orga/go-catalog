@@ -2,20 +2,20 @@ package api
 
 import (
 	"catalog/configuration"
+	"catalog/db"
 
 	"github.com/labstack/echo/v4"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type ApiHandler struct {
-	mongo *mongo.Client
-	conf  *configuration.Configuration
+	dbh  *db.DbHandler
+	conf *configuration.Configuration
 }
 
-func NewApiHandler(mongo *mongo.Client, conf *configuration.Configuration) *ApiHandler {
+func NewApiHandler(dbh *db.DbHandler, conf *configuration.Configuration) *ApiHandler {
 	handler := ApiHandler{
-		mongo: mongo,
-		conf:  conf,
+		dbh:  dbh,
+		conf: conf,
 	}
 	return &handler
 }

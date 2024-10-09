@@ -18,8 +18,8 @@ func main() {
 	logger.Info("Cacahuete API Starting...")
 
 	conf := configuration.New()
-
-	pg, err := db.New(conf)
+	logger.Logger.SetLevel(conf.LogLevel)
+	dbh, err := db.New(conf)
 
 	if err != nil {
 		return
@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		return
 	}
-	h := api.NewApiHandler(pg, conf)
+	h := api.NewApiHandler(dbh, conf)
 
 	h.Register(v1, conf)
 	r.Logger.Fatal(r.Start(fmt.Sprintf("%v:%v", conf.ListenAddress, conf.ListenPort)))

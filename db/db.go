@@ -8,7 +8,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func New(conf *configuration.Configuration) (*mongo.Client, error) {
+type DbHandler struct {
+	Client *mongo.Client
+	conf   *configuration.Configuration
+}
+
+func NewDbHandler(client *mongo.Client, conf *configuration.Configuration) *DbHandler {
+	handler := DbHandler{
+		Client: client,
+		conf:   conf,
+	}
+	return &handler
+}
+
+func New(conf *configuration.Configuration) (*DbHandler, error) {
 
 	// Database connexion
 
@@ -24,5 +37,6 @@ func New(conf *configuration.Configuration) (*mongo.Client, error) {
 		panic(err)
 	}
 	loger.Info("Connected to MongoDB!")
-	return client, nil
+	dbHandler := NewDbHandler(client, conf)
+	return dbHandler, nil
 }

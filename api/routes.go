@@ -30,7 +30,7 @@ func (api *ApiHandler) getAliveStatus(c echo.Context) error {
 
 func (api *ApiHandler) getReadyStatus(c echo.Context) error {
 	l := logger.WithField("request", "getReadyStatus")
-	err := api.mongo.Ping(context.Background(), nil)
+	err := api.dbh.Client.Ping(context.Background(), nil)
 	if err != nil {
 		WarnOnError(l, err, "Unable to ping database to check connection.")
 		return c.JSON(http.StatusServiceUnavailable, NewHealthResponse(NotReadyStatus))
@@ -54,14 +54,14 @@ func (api *ApiHandler) postIngredient(c echo.Context) error {
 		return NewBadRequestError(err)
 	}
 	// Insert the ingredient
-	ingredient.ID = db.NewID()
+	ingredient.ID = api.dbh.NewID()
 
-	i, _ := db.FindByName(l, api.mongo, ingredient.Name)
+	i, _ := api.dbh.FindByName(l, ingredient.Name)
 	if i != nil {
 		return NewConflictError(errors.New("ingredient already exists"))
 	}
 
-	if err := db.InsertOne(l, api.mongo, ingredient); err != nil {
+	if err := api.dbh.InsertOne(l, ingredient); err != nil {
 		FailOnError(l, err, "Insertion failed")
 		return NewInternalServerError(err)
 	}
@@ -72,7 +72,7 @@ func (api *ApiHandler) postIngredient(c echo.Context) error {
 
 func (api *ApiHandler) getIngredients(c echo.Context) error {
 	l := logger.WithField("request", "getIngredients")
-	recipes, err := db.FindAllIngredients(l, api.mongo)
+	recipes, err := api.dbh.FindAllIngredients(l)
 	if err != nil {
 		return NewNotFoundError(err)
 	}
@@ -85,7 +85,7 @@ func (api *ApiHandler) getIngredientByID(c echo.Context) error {
 	id := c.Param("id")
 
 	// Find the ingredient
-	ingredient, err := db.FindByID(l, api.mongo, id)
+	ingredient, err := api.dbh.FindByID(l, id)
 	if err != nil {
 		return NewNotFoundError(err)
 	}
@@ -99,7 +99,7 @@ func (api *ApiHandler) getIngredientByName(c echo.Context) error {
 	// Retrieve the ingredient name from the path
 	name := c.Param("name")
 	// Find the ingredient
-	ingredient, err := db.FindByName(l, api.mongo, name)
+	ingredient, err := api.dbh.FindByName(l, name)
 	if err != nil {
 		WarnOnError(l, err, "Find by name failed")
 		return NewNotFoundError(err)
@@ -116,7 +116,7 @@ func (api *ApiHandler) getIngredientByType(c echo.Context) error {
 	ingredientType := c.Param("type")
 
 	// Find the ingredient
-	ingredients, err := db.FindByType(l, api.mongo, ingredientType)
+	ingredients, err := api.dbh.FindByType(l, ingredientType)
 	if err != nil {
 		WarnOnError(l, err, "Find by type failed")
 		return NewNotFoundError(err)
@@ -147,7 +147,7 @@ func (api *ApiHandler) putIngredient(c echo.Context) error {
 	}
 	ingredient.ID = id
 
-	if err := db.UpsertOne(l, api.mongo, ingredient); err != nil {
+	if err := api.dbh.UpsertOne(l, ingredient); err != nil {
 		FailOnError(l, err, "Insertion failed")
 		return NewNotFoundError(err)
 	}

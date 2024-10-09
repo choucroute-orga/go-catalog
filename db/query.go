@@ -14,21 +14,19 @@ var loger = logrus.WithFields(logrus.Fields{
 	"context": "db/query",
 })
 
-// func LogAndReturnError(l *logrus.Entry, result *gorm.DB, action string, modelType string) error {
-// 	if err := result.Error; err != nil {
-// 		l.WithError(err).Error("Error when trying to query database to " + action + " " + modelType)
-// 		return err
-// 	}
-// 	return nil
-// }
-
-func NewID() primitive.ObjectID {
+func (dbh *DbHandler) NewID() primitive.ObjectID {
 	return primitive.NewObjectID()
 }
 
-func FindByID(l *logrus.Entry, mongo *mongo.Client, id string) (*Ingredient, error) {
-	collection := mongo.Database("catalog").Collection("ingredient")
-	filter := map[string]string{"_id": id}
+func (dbh *DbHandler) GetIngredientsCollection() *mongo.Collection {
+	return dbh.Client.Database(dbh.conf.DBName).Collection(dbh.conf.IngredientsCollectionName)
+}
+
+func (dbh *DbHandler) FindByID(l *logrus.Entry, id string) (*Ingredient, error) {
+	// TODO Change those hardcoded values
+	collection := dbh.GetIngredientsCollection()
+	objectID, _ := primitive.ObjectIDFromHex(id)
+	filter := map[string]primitive.ObjectID{"_id": objectID}
 	var ingredient Ingredient
 	err := collection.FindOne(context.Background(), filter).Decode(&ingredient)
 	if err != nil {
@@ -38,8 +36,8 @@ func FindByID(l *logrus.Entry, mongo *mongo.Client, id string) (*Ingredient, err
 	return &ingredient, nil
 }
 
-func FindAllIngredients(l *logrus.Entry, mongo *mongo.Client) (*[]Ingredient, error) {
-	collection := mongo.Database("catalog").Collection("ingredient")
+func (dbh *DbHandler) FindAllIngredients(l *logrus.Entry) (*[]Ingredient, error) {
+	collection := dbh.GetIngredientsCollection()
 	cursor, err := collection.Find(context.Background(), bson.M{})
 	if err != nil {
 		l.WithError(err).Error("Error when trying to find all recipes")
@@ -54,8 +52,8 @@ func FindAllIngredients(l *logrus.Entry, mongo *mongo.Client) (*[]Ingredient, er
 	return &ingredients, nil
 }
 
-func FindByName(l *logrus.Entry, mongo *mongo.Client, name string) (*Ingredient, error) {
-	collection := mongo.Database("catalog").Collection("ingredient")
+func (dbh *DbHandler) FindByName(l *logrus.Entry, name string) (*Ingredient, error) {
+	collection := dbh.GetIngredientsCollection()
 	filter := map[string]string{"name": name}
 	var ingredient Ingredient
 	err := collection.FindOne(context.Background(), filter).Decode(&ingredient)
@@ -66,8 +64,8 @@ func FindByName(l *logrus.Entry, mongo *mongo.Client, name string) (*Ingredient,
 	return &ingredient, nil
 }
 
-func FindByType(l *logrus.Entry, mongo *mongo.Client, ingredientType string) (*[]Ingredient, error) {
-	collection := mongo.Database("catalog").Collection("ingredient")
+func (dbh *DbHandler) FindByType(l *logrus.Entry, ingredientType string) (*[]Ingredient, error) {
+	collection := dbh.GetIngredientsCollection()
 	filter := map[string]string{"type": ingredientType}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
@@ -82,8 +80,8 @@ func FindByType(l *logrus.Entry, mongo *mongo.Client, ingredientType string) (*[
 	return &ingredients, nil
 }
 
-func InsertOne(l *logrus.Entry, mongo *mongo.Client, ingredient *Ingredient) error {
-	collection := mongo.Database("catalog").Collection("ingredient")
+func (dbh *DbHandler) InsertOne(l *logrus.Entry, ingredient *Ingredient) error {
+	collection := dbh.GetIngredientsCollection()
 	_, err := collection.InsertOne(context.Background(), ingredient)
 	if err != nil {
 		l.WithError(err).Error("Error when trying to insert ingredient")
@@ -92,8 +90,8 @@ func InsertOne(l *logrus.Entry, mongo *mongo.Client, ingredient *Ingredient) err
 	return nil
 }
 
-func UpsertOne(l *logrus.Entry, mongo *mongo.Client, ingredient *Ingredient) error {
-	collection := mongo.Database("catalog").Collection("ingredient")
+func (dbh *DbHandler) UpsertOne(l *logrus.Entry, ingredient *Ingredient) error {
+	collection := dbh.GetIngredientsCollection()
 	filter := map[string]primitive.ObjectID{"_id": ingredient.ID}
 	update := map[string]Ingredient{"$set": *ingredient}
 	res, err := collection.UpdateOne(context.Background(), filter, update)
