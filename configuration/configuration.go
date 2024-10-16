@@ -20,8 +20,11 @@ type Configuration struct {
 	DBURI                     string
 	DBName                    string
 	IngredientsCollectionName string
+	ShopsColletionName        string
+	PricesColletionName       string
 	TranslateValidation       bool
 	JWTSecret                 string
+	OtelServiceName           string
 }
 
 func New() *Configuration {
@@ -72,6 +75,18 @@ func New() *Configuration {
 	logger.Debug("DBName: ", conf.DBName)
 
 	conf.IngredientsCollectionName = os.Getenv("MONGODB_INGREDIENTS_COLLECTION")
+	conf.PricesColletionName = os.Getenv("MONGODB_PRICES_COLLECTION")
+	conf.ShopsColletionName = os.Getenv("MONGODB_SHOPS_COLLECTION")
+
+	if len(conf.ShopsColletionName) < 1 {
+		logger.Error("MONGODB_SHOPS_COLLECTION is not set")
+		os.Exit(1)
+	}
+
+	if len(conf.PricesColletionName) < 1 {
+		logger.Error("MONGODB_PRICES_COLLECTION is not set")
+		os.Exit(1)
+	}
 
 	if len(conf.IngredientsCollectionName) < 1 {
 		logger.Error("MONGODB_INGREDIENTS_COLLECTION is not set")
@@ -86,6 +101,6 @@ func New() *Configuration {
 	}
 
 	conf.JWTSecret = os.Getenv("JWT_SECRET")
-
+	conf.OtelServiceName = os.Getenv("OTEL_SERVICE_NAME")
 	return &conf
 }

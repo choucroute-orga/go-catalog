@@ -15,7 +15,8 @@ var logger = logrus.WithFields(logrus.Fields{
 })
 
 func main() {
-	logger.Info("Cacahuete API Starting...")
+	configuration.SetupLogging()
+	logger.Info("Catalog API Starting...")
 
 	conf := configuration.New()
 	logger.Logger.SetLevel(conf.LogLevel)
@@ -29,11 +30,8 @@ func main() {
 	r := api.New(val)
 	v1 := r.Group(conf.ListenRoute)
 
-	if err != nil {
-		return
-	}
 	h := api.NewApiHandler(dbh, conf)
 
-	h.Register(v1, conf)
+	h.Register(v1)
 	r.Logger.Fatal(r.Start(fmt.Sprintf("%v:%v", conf.ListenAddress, conf.ListenPort)))
 }
