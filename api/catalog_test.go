@@ -86,10 +86,10 @@ func InitTestMongo() (*mongo.Client, error) {
 		// Initialize mongo client
 		logger.Info("Connecting to MongoDB: " + DBUri)
 		// Retry connection with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		ticker := time.NewTicker(500 * time.Millisecond)
+		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
 
 		for {
@@ -173,7 +173,7 @@ func setupTest(t *testing.T) (*ApiHandler, func()) {
 	if err != nil {
 		t.Fatalf("Failed to create DB handler: %v", err)
 	}
-	api := NewApiHandler(dbh, conf)
+	api := NewApiHandler(dbh, nil, conf)
 
 	// Return cleanup function
 	return api, func() {
@@ -228,6 +228,14 @@ func TestDB(t *testing.T) {
 					t.Fatalf("Failed to insert price: %v", err)
 				}
 
+				if priceInserted.Price != 10.0 || priceInserted.Devise != "EUR" {
+					t.Fatalf("Price not inserted: %v", priceInserted)
+				}
+
+				if len(priceInserted.ProductID) != 24 || len(priceInserted.ShopID) != 24 {
+					t.Fatalf("ProductID or ShopID not valid: %v", priceInserted)
+				}
+
 				priceInserted.Price = 20.0
 				priceInserted.Devise = "USD"
 				priceUpdated, err := api.dbh.UpdatePrice(l, priceInserted)
@@ -237,9 +245,80 @@ func TestDB(t *testing.T) {
 				if priceUpdated.Price != 20.0 || priceUpdated.Devise != "USD" {
 					t.Fatalf("Price not updated: %v", priceUpdated)
 				}
+				if priceUpdated.ProductID != price.ProductID || priceUpdated.ShopID != price.ShopID {
+					t.Fatalf("ProductID or ShopID changed: PID: %v, SID: %v", priceUpdated.ProductID, priceUpdated.ShopID)
+				}
+
+				if len(priceUpdated.ProductID) != 24 || len(priceUpdated.ShopID) != 24 {
+					t.Fatalf("ProductID or ShopID not valid: %v", priceUpdated)
+				}
+
+				if priceUpdated.ID.IsZero() {
+					t.Fatalf("ID not set: %v", priceUpdated)
+				}
+
+				// Get the price and check the same value
+				filter := bson.M{"_id": priceUpdated.ID}
+				prices, err := api.dbh.GetPrices(l, filter)
+				if err != nil {
+					t.Fatalf("Failed to get prices: %v", err)
+				}
+				if len(*prices) != 1 {
+					t.Fatalf("Expected 1 price, got %v", len(*prices))
+				}
+				if (*prices)[0].Price != 20.0 || (*prices)[0].Devise != "USD" {
+					t.Fatalf("Price not updated: %v", (*prices)[0])
+				}
 
 				l.Debug("Test started")
 				l.Debugf("API: %v", api)
+			},
+		},
+		{
+			name: "Find the latest price by date",
+			test: func(t *testing.T) {
+				api, cleanup := setupTest(t)
+				defer cleanup()
+				l := logrus.WithField("test", "Find the latest price by date")
+				price := &db.Price{
+					Price:     10.0,
+					Devise:    "EUR",
+					ProductID: primitive.NewObjectID().Hex(),
+					ShopID:    primitive.NewObjectID().Hex(),
+					UpdatedAt: time.Now().Add(-time.Hour),
+				}
+
+				productId, _ := primitive.ObjectIDFromHex(price.ProductID)
+				shopId, _ := primitive.ObjectIDFromHex(price.ShopID)
+				price2 := &db.Price{
+					Price:     20.0,
+					Devise:    "USD",
+					ProductID: productId.Hex(),
+					ShopID:    shopId.Hex(),
+					UpdatedAt: time.Now(),
+				}
+
+				_, err := api.dbh.CreatePrice(l, price)
+				if err != nil {
+					t.Fatalf("Failed to insert price: %v", err)
+				}
+				_, err = api.dbh.CreatePrice(l, price2)
+				if err != nil {
+					t.Fatalf("Failed to insert price2: %v", err)
+				}
+
+				// Get the price by updatedDate
+
+				getPrice, err := api.dbh.GetLastUpdatedPrice(l, shopId.Hex(), productId.Hex())
+
+				if err != nil {
+					t.Fatalf("Failed to get price: %v", err)
+				}
+
+				if getPrice.Price != 20.0 || getPrice.Devise != "USD" {
+					t.Fatalf("Latest price doesn't correspond: %v", getPrice)
+				}
+
 			},
 		},
 	}

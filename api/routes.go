@@ -162,7 +162,7 @@ func (api *ApiHandler) putIngredient(c echo.Context) error {
 // Shop CRUD operations
 
 func (api *ApiHandler) createShop(c echo.Context) error {
-	ctx, span := api.trace.Start(c.Request().Context(), "CreateShop")
+	ctx, span := api.tracer.Start(c.Request().Context(), "CreateShop")
 	defer span.End()
 	l := logger.WithContext(ctx).WithField("request", "CreateShop")
 
@@ -204,7 +204,7 @@ func (api *ApiHandler) createShop(c echo.Context) error {
 }
 
 func (api *ApiHandler) getShop(c echo.Context) error {
-	ctx, span := api.trace.Start(c.Request().Context(), "GetShop")
+	ctx, span := api.tracer.Start(c.Request().Context(), "GetShop")
 	l := logger.WithContext(ctx).WithField("request", "GetShop")
 	defer span.End()
 
@@ -228,7 +228,7 @@ func (api *ApiHandler) getShop(c echo.Context) error {
 }
 
 func (api *ApiHandler) getShops(c echo.Context) error {
-	ctx, span := api.trace.Start(c.Request().Context(), "GetShops")
+	ctx, span := api.tracer.Start(c.Request().Context(), "GetShops")
 	defer span.End()
 	l := logger.WithContext(ctx).WithField("request", "GetShops")
 
@@ -244,7 +244,7 @@ func (api *ApiHandler) getShops(c echo.Context) error {
 }
 
 func (api *ApiHandler) updateShop(c echo.Context) error {
-	ctx, span := api.trace.Start(c.Request().Context(), "UpdateShop")
+	ctx, span := api.tracer.Start(c.Request().Context(), "UpdateShop")
 	defer span.End()
 	l := logger.WithContext(ctx).WithField("request", "UpdateShop")
 
@@ -277,7 +277,7 @@ func (api *ApiHandler) updateShop(c echo.Context) error {
 }
 
 func (api *ApiHandler) deleteShop(c echo.Context) error {
-	ctx, span := api.trace.Start(c.Request().Context(), "DeleteShop")
+	ctx, span := api.tracer.Start(c.Request().Context(), "DeleteShop")
 	defer span.End()
 	l := logger.WithContext(ctx).WithField("request", "DeleteShop")
 
@@ -325,11 +325,19 @@ func (api *ApiHandler) createPrice(c echo.Context) error {
 }
 
 func (api *ApiHandler) getPrices(c echo.Context) error {
-	ctx, span := api.trace.Start(c.Request().Context(), "GetPrices")
+	ctx, span := api.tracer.Start(c.Request().Context(), "GetPrices")
 	defer span.End()
 	l := logger.WithContext(ctx).WithField("request", "GetPrices")
 
 	filter := bson.M{}
+
+	if id := c.QueryParam("id"); id != "" {
+		oid, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			return NewBadRequestError(err)
+		}
+		filter["_id"] = oid
+	}
 
 	if minPrice := c.QueryParam("minPrice"); minPrice != "" {
 		filter["price"] = bson.M{"$gte": minPrice}
@@ -341,7 +349,7 @@ func (api *ApiHandler) getPrices(c echo.Context) error {
 		filter["price"].(bson.M)["$lte"] = maxPrice
 	}
 	if ingID := c.QueryParam("ingId"); ingID != "" {
-		filter["ingredientId"] = ingID
+		filter["productId"] = ingID
 	}
 	if shopID := c.QueryParam("shopId"); shopID != "" {
 		filter["shopId"] = shopID

@@ -210,13 +210,9 @@ func (dbh *DbHandler) CreatePrice(l *logrus.Entry, price *Price) (*Price, error)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	now := time.Now()
-	price.CreatedAt = now
-	price.UpdatedAt = now
-
 	result, err := dbh.GetPricesCollection().InsertOne(ctx, price)
 	if err != nil {
-		l.WithError(err).Error("Failed to insert ingredient price")
+		l.WithError(err).Error("Failed to insert price")
 		return nil, err
 	}
 
@@ -229,13 +225,14 @@ func (dbh *DbHandler) UpdatePrice(l *logrus.Entry, update *Price) (*Price, error
 	defer cancel()
 	collection := dbh.GetPricesCollection()
 	filter := bson.M{"_id": update.ID}
-	updateFields := Price{
-		Price:     update.Price,
-		UpdatedAt: time.Now(),
-		Devise:    update.Devise,
-	}
-	updateDoc := bson.M{"$set": updateFields}
 
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"price":     update.Price,
+			"updatedAt": update.UpdatedAt,
+			"devise":    update.Devise,
+		},
+	}
 	result := collection.FindOneAndUpdate(ctx, filter, updateDoc, options.FindOneAndUpdate().SetReturnDocument(options.After))
 
 	var updated Price
@@ -243,7 +240,7 @@ func (dbh *DbHandler) UpdatePrice(l *logrus.Entry, update *Price) (*Price, error
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
 		}
-		l.WithError(err).Error("Failed to update ingredient price")
+		l.WithError(err).Error("Failed to update price")
 		return nil, err
 	}
 
@@ -256,16 +253,44 @@ func (dbh *DbHandler) GetPrices(l *logrus.Entry, filter bson.M) (*[]Price, error
 
 	cursor, err := dbh.GetPricesCollection().Find(ctx, filter)
 	if err != nil {
-		l.WithError(err).Error("Failed to get ingredient prices")
+		l.WithError(err).Error("Failed to get prices")
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
 	prices := make([]Price, 0)
 	if err = cursor.All(ctx, &prices); err != nil {
-		l.WithError(err).Error("Failed to decode ingredient prices")
+		l.WithError(err).Error("Failed to decode prices")
 		return nil, err
 	}
 
 	return &prices, nil
+}
+
+func (dbh *DbHandler) GetLastUpdatedPrice(l *logrus.Entry, shopID, productID string) (*Price, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"shopId":    shopID,
+		"productId": productID,
+	}
+
+	opts := options.FindOne().SetSort(bson.M{"updatedAt": -1})
+
+	var price Price
+	err := dbh.GetPricesCollection().FindOne(ctx, filter, opts).Decode(&price)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			l.WithFields(logrus.Fields{
+				"shopId":    shopID,
+				"productId": productID,
+			}).Info("No price found for the given shop and product")
+			return nil, err
+		}
+		l.WithError(err).Error("Failed to get last updated price")
+		return nil, err
+	}
+
+	return &price, nil
 }

@@ -3,6 +3,7 @@ package db
 import (
 	"catalog/configuration"
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -24,9 +25,10 @@ func NewDbHandler(client *mongo.Client, conf *configuration.Configuration) *DbHa
 func New(conf *configuration.Configuration) (*DbHandler, error) {
 
 	// Database connexion
-
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	loger.Info("Connecting to MongoDB..." + conf.DBURI)
-	client, err := mongo.Connect(context.TODO(), options.Client().
+	client, err := mongo.Connect(ctx, options.Client().
 		ApplyURI(conf.DBURI))
 	if err != nil {
 		panic(err)

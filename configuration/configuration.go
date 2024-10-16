@@ -17,6 +17,7 @@ type Configuration struct {
 	ListenAddress             string
 	ListenRoute               string
 	LogLevel                  logrus.Level
+	RabbitURI                 string
 	DBURI                     string
 	DBName                    string
 	IngredientsCollectionName string
@@ -61,6 +62,13 @@ func New() *Configuration {
 	// Check if the DBURI is set
 	if len(conf.DBURI) < 1 {
 		logger.Error("MONGODB_URI is not set")
+		os.Exit(1)
+	}
+
+	conf.RabbitURI = os.Getenv("RABBITMQ_URL")
+
+	if len(conf.RabbitURI) < 1 {
+		logger.Error("RABBITMQ_URL is not set")
 		os.Exit(1)
 	}
 
