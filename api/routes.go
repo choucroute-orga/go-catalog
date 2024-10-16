@@ -182,6 +182,9 @@ func (api *ApiHandler) createShop(c echo.Context) error {
 	insertedShop, err := api.dbh.CreateShop(l, dbShop)
 
 	if err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			return NewConflictError(err)
+		}
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "Failed to insert shop")
 		l.WithFields(
@@ -317,6 +320,9 @@ func (api *ApiHandler) createPrice(c echo.Context) error {
 
 	result, err := api.dbh.CreatePrice(l, ingPrice)
 	if err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			return NewConflictError(err)
+		}
 		l.WithError(err).Error("Failed to insert ingredient price")
 		return NewInternalServerError(err)
 	}
