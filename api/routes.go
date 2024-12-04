@@ -2,7 +2,6 @@ package api
 
 import (
 	"catalog/db"
-	"context"
 	"errors"
 	"net/http"
 
@@ -34,7 +33,7 @@ func (api *ApiHandler) getAliveStatus(c echo.Context) error {
 
 func (api *ApiHandler) getReadyStatus(c echo.Context) error {
 	l := logger.WithField("request", "getReadyStatus")
-	err := api.dbh.Client.Ping(context.Background(), nil)
+	err := api.dbh.Ping()
 	if err != nil {
 		WarnOnError(l, err, "Unable to ping database to check connection.")
 		return c.JSON(http.StatusServiceUnavailable, NewHealthResponse(NotReadyStatus))
@@ -330,6 +329,7 @@ func (api *ApiHandler) createPrice(c echo.Context) error {
 	return c.JSON(http.StatusCreated, result)
 }
 
+// TODO ReAdd the query parameters with the EventStore
 func (api *ApiHandler) getPrices(c echo.Context) error {
 	ctx, span := api.tracer.Start(c.Request().Context(), "GetPrices")
 	defer span.End()
@@ -370,11 +370,31 @@ func (api *ApiHandler) getPrices(c echo.Context) error {
 		filter["updatedAt"].(bson.M)["$lte"] = endDate
 	}
 
-	prices, err := api.dbh.GetPrices(l, filter)
+	prices, err := api.dbh.GetPrices(l)
 	if err != nil {
 		l.WithError(err).Error("Failed to get ingredient prices")
 		return NewInternalServerError(err)
 	}
 
 	return c.JSON(http.StatusOK, prices)
+}
+
+func (api *ApiHandler) getLastUpdatedPrice(c echo.Context) error {
+	ctx, span := api.tracer.Start(c.Request().Context(), "GetLastUpdatedPrice")
+	defer span.End()
+	l := logger.WithContext(ctx).WithField("request", "GetLastUpdatedPrice")
+
+	shopID := c.Param("shopId")
+	productID := c.Param("productId")
+
+	price, err := api.dbh.GetLastUpdatedPrice(l, shopID, productID)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return NewNotFoundError(err)
+		}
+		l.WithError(err).Error("Failed to get last updated price")
+		return NewInternalServerError(err)
+	}
+
+	return c.JSON(http.StatusOK, price)
 }

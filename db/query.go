@@ -16,23 +16,35 @@ var loger = logrus.WithFields(logrus.Fields{
 	"context": "db/query",
 })
 
-func (dbh *DbHandler) NewID() primitive.ObjectID {
+func (dbh *MongoHandler) NewID() primitive.ObjectID {
 	return primitive.NewObjectID()
 }
 
-func (dbh *DbHandler) GetIngredientsCollection() *mongo.Collection {
-	return dbh.Client.Database(dbh.conf.DBName).Collection(dbh.conf.IngredientsCollectionName)
+func (dbh *MongoHandler) Ping() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return dbh.client.Ping(ctx, nil)
 }
 
-func (dbh *DbHandler) GetPricesCollection() *mongo.Collection {
-	return dbh.Client.Database(dbh.conf.DBName).Collection(dbh.conf.PricesColletionName)
+func (dbh *MongoHandler) Disconnect() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return dbh.client.Disconnect(ctx)
 }
 
-func (dbh *DbHandler) GetShopsCollection() *mongo.Collection {
-	return dbh.Client.Database(dbh.conf.DBName).Collection(dbh.conf.ShopsColletionName)
+func (dbh *MongoHandler) GetIngredientsCollection() *mongo.Collection {
+	return dbh.client.Database(dbh.dbName).Collection(dbh.ingredientsCollectionName)
 }
 
-func (dbh *DbHandler) FindByID(l *logrus.Entry, id string) (*Ingredient, error) {
+func (dbh *MongoHandler) GetPricesCollection() *mongo.Collection {
+	return dbh.client.Database(dbh.dbName).Collection(dbh.pricesCollectionName)
+}
+
+func (dbh *MongoHandler) GetShopsCollection() *mongo.Collection {
+	return dbh.client.Database(dbh.dbName).Collection(dbh.shopsCollectionName)
+}
+
+func (dbh *MongoHandler) FindByID(l *logrus.Entry, id string) (*Ingredient, error) {
 	// TODO Change those hardcoded values
 	collection := dbh.GetIngredientsCollection()
 	objectID, _ := primitive.ObjectIDFromHex(id)
@@ -46,7 +58,7 @@ func (dbh *DbHandler) FindByID(l *logrus.Entry, id string) (*Ingredient, error) 
 	return &ingredient, nil
 }
 
-func (dbh *DbHandler) FindAllIngredients(l *logrus.Entry) (*[]Ingredient, error) {
+func (dbh *MongoHandler) FindAllIngredients(l *logrus.Entry) (*[]Ingredient, error) {
 	collection := dbh.GetIngredientsCollection()
 	cursor, err := collection.Find(context.Background(), bson.M{})
 	if err != nil {
@@ -62,7 +74,7 @@ func (dbh *DbHandler) FindAllIngredients(l *logrus.Entry) (*[]Ingredient, error)
 	return &ingredients, nil
 }
 
-func (dbh *DbHandler) FindByName(l *logrus.Entry, name string) (*Ingredient, error) {
+func (dbh *MongoHandler) FindByName(l *logrus.Entry, name string) (*Ingredient, error) {
 	collection := dbh.GetIngredientsCollection()
 	filter := map[string]string{"name": name}
 	var ingredient Ingredient
@@ -74,7 +86,7 @@ func (dbh *DbHandler) FindByName(l *logrus.Entry, name string) (*Ingredient, err
 	return &ingredient, nil
 }
 
-func (dbh *DbHandler) FindByType(l *logrus.Entry, ingredientType string) (*[]Ingredient, error) {
+func (dbh *MongoHandler) FindByType(l *logrus.Entry, ingredientType string) (*[]Ingredient, error) {
 	collection := dbh.GetIngredientsCollection()
 	filter := map[string]string{"type": ingredientType}
 	cursor, err := collection.Find(context.Background(), filter)
@@ -90,7 +102,7 @@ func (dbh *DbHandler) FindByType(l *logrus.Entry, ingredientType string) (*[]Ing
 	return &ingredients, nil
 }
 
-func (dbh *DbHandler) InsertOne(l *logrus.Entry, ingredient *Ingredient) error {
+func (dbh *MongoHandler) InsertOne(l *logrus.Entry, ingredient *Ingredient) error {
 	collection := dbh.GetIngredientsCollection()
 	_, err := collection.InsertOne(context.Background(), ingredient)
 	if err != nil {
@@ -100,7 +112,7 @@ func (dbh *DbHandler) InsertOne(l *logrus.Entry, ingredient *Ingredient) error {
 	return nil
 }
 
-func (dbh *DbHandler) UpsertOne(l *logrus.Entry, ingredient *Ingredient) error {
+func (dbh *MongoHandler) UpsertOne(l *logrus.Entry, ingredient *Ingredient) error {
 	collection := dbh.GetIngredientsCollection()
 	filter := map[string]primitive.ObjectID{"_id": ingredient.ID}
 	update := map[string]Ingredient{"$set": *ingredient}
@@ -117,7 +129,7 @@ func (dbh *DbHandler) UpsertOne(l *logrus.Entry, ingredient *Ingredient) error {
 	return nil
 }
 
-func (dbh *DbHandler) CreateShop(l *logrus.Entry, shop *Shop) (*Shop, error) {
+func (dbh *MongoHandler) CreateShop(l *logrus.Entry, shop *Shop) (*Shop, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -131,7 +143,7 @@ func (dbh *DbHandler) CreateShop(l *logrus.Entry, shop *Shop) (*Shop, error) {
 	return shop, nil
 }
 
-func (dbh *DbHandler) GetShops(l *logrus.Entry) (*[]Shop, error) {
+func (dbh *MongoHandler) GetShops(l *logrus.Entry) (*[]Shop, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -151,7 +163,7 @@ func (dbh *DbHandler) GetShops(l *logrus.Entry) (*[]Shop, error) {
 	return &shops, nil
 }
 
-func (dbh *DbHandler) GetShop(l *logrus.Entry, id primitive.ObjectID) (*Shop, error) {
+func (dbh *MongoHandler) GetShop(l *logrus.Entry, id primitive.ObjectID) (*Shop, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -165,7 +177,7 @@ func (dbh *DbHandler) GetShop(l *logrus.Entry, id primitive.ObjectID) (*Shop, er
 	return &shop, nil
 }
 
-func (dbh *DbHandler) UpdateShop(l *logrus.Entry, shop *Shop) (*Shop, error) {
+func (dbh *MongoHandler) UpdateShop(l *logrus.Entry, shop *Shop) (*Shop, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	collection := dbh.GetShopsCollection()
@@ -187,7 +199,7 @@ func (dbh *DbHandler) UpdateShop(l *logrus.Entry, shop *Shop) (*Shop, error) {
 
 }
 
-func (dbh *DbHandler) DeleteShop(l *logrus.Entry, id primitive.ObjectID) error {
+func (dbh *MongoHandler) DeleteShop(l *logrus.Entry, id primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -206,7 +218,7 @@ func (dbh *DbHandler) DeleteShop(l *logrus.Entry, id primitive.ObjectID) error {
 
 // Price operations
 
-func (dbh *DbHandler) CreatePrice(l *logrus.Entry, price *Price) (*Price, error) {
+func (dbh *MongoHandler) CreatePrice(l *logrus.Entry, price *Price) (*Price, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -220,7 +232,7 @@ func (dbh *DbHandler) CreatePrice(l *logrus.Entry, price *Price) (*Price, error)
 	return price, nil
 }
 
-func (dbh *DbHandler) UpdatePrice(l *logrus.Entry, update *Price) (*Price, error) {
+func (dbh *MongoHandler) UpdatePrice(l *logrus.Entry, update *Price) (*Price, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	collection := dbh.GetPricesCollection()
@@ -247,11 +259,11 @@ func (dbh *DbHandler) UpdatePrice(l *logrus.Entry, update *Price) (*Price, error
 	return &updated, nil
 }
 
-func (dbh *DbHandler) GetPrices(l *logrus.Entry, filter bson.M) (*[]Price, error) {
+func (dbh *MongoHandler) GetPrices(l *logrus.Entry) (*[]Price, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cursor, err := dbh.GetPricesCollection().Find(ctx, filter)
+	cursor, err := dbh.GetPricesCollection().Find(ctx, bson.M{})
 	if err != nil {
 		l.WithError(err).Error("Failed to get prices")
 		return nil, err
@@ -267,7 +279,7 @@ func (dbh *DbHandler) GetPrices(l *logrus.Entry, filter bson.M) (*[]Price, error
 	return &prices, nil
 }
 
-func (dbh *DbHandler) GetLastUpdatedPrice(l *logrus.Entry, shopID, productID string) (*Price, error) {
+func (dbh *MongoHandler) GetLastUpdatedPrice(l *logrus.Entry, shopID, productID string) (*Price, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

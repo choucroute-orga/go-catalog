@@ -5,24 +5,54 @@ import (
 	"context"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type DbHandler struct {
-	Client *mongo.Client
-	conf   *configuration.Configuration
+type DbHandler interface {
+	Disconnect() error
+	Ping() error
+	NewID() primitive.ObjectID
+	FindByID(l *logrus.Entry, id string) (*Ingredient, error)
+	FindAllIngredients(l *logrus.Entry) (*[]Ingredient, error)
+	FindByName(l *logrus.Entry, name string) (*Ingredient, error)
+	FindByType(l *logrus.Entry, ingredientType string) (*[]Ingredient, error)
+	InsertOne(l *logrus.Entry, ingredient *Ingredient) error
+	UpsertOne(l *logrus.Entry, ingredient *Ingredient) error
+	CreateShop(l *logrus.Entry, shop *Shop) (*Shop, error)
+	GetShops(l *logrus.Entry) (*[]Shop, error)
+	GetShop(l *logrus.Entry, id primitive.ObjectID) (*Shop, error)
+	UpdateShop(l *logrus.Entry, shop *Shop) (*Shop, error)
+	DeleteShop(l *logrus.Entry, id primitive.ObjectID) error
+	CreatePrice(l *logrus.Entry, price *Price) (*Price, error)
+	UpdatePrice(l *logrus.Entry, price *Price) (*Price, error)
+	GetPrices(l *logrus.Entry) (*[]Price, error)
+	GetLastUpdatedPrice(l *logrus.Entry, shopID, productID string) (*Price, error)
 }
 
-func NewDbHandler(client *mongo.Client, conf *configuration.Configuration) *DbHandler {
-	handler := DbHandler{
-		Client: client,
-		conf:   conf,
+type MongoHandler struct {
+	client                    *mongo.Client
+	dbName                    string
+	ingredientsCollectionName string
+	shopsCollectionName       string
+	pricesCollectionName      string
+}
+
+func newMongoHandler(client *mongo.Client, dbName, ingredientsCollectionName, shopsCollectionName, pricesCollectionName string) *MongoHandler {
+
+	handler := MongoHandler{
+		client:                    client,
+		dbName:                    dbName,
+		ingredientsCollectionName: ingredientsCollectionName,
+		shopsCollectionName:       shopsCollectionName,
+		pricesCollectionName:      pricesCollectionName,
 	}
 	return &handler
 }
 
-func New(conf *configuration.Configuration) (*DbHandler, error) {
+func NewMongoHandler(conf *configuration.Configuration) (*MongoHandler, error) {
 
 	// Database connexion
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -39,6 +69,6 @@ func New(conf *configuration.Configuration) (*DbHandler, error) {
 		panic(err)
 	}
 	loger.Info("Connected to MongoDB!")
-	dbHandler := NewDbHandler(client, conf)
+	dbHandler := newMongoHandler(client, conf.DBName, conf.IngredientsCollectionName, conf.ShopsCollectionName, conf.PricesColletionName)
 	return dbHandler, nil
 }

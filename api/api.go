@@ -12,14 +12,14 @@ import (
 )
 
 type ApiHandler struct {
-	dbh        *db.DbHandler
+	dbh        db.DbHandler
 	amqp       *amqp.Connection
 	conf       *configuration.Configuration
 	validation *validation.Validation
 	tracer     trace.Tracer
 }
 
-func NewApiHandler(dbh *db.DbHandler, amqp *amqp.Connection, conf *configuration.Configuration) *ApiHandler {
+func NewApiHandler(dbh db.DbHandler, amqp *amqp.Connection, conf *configuration.Configuration) *ApiHandler {
 	handler := ApiHandler{
 		dbh:        dbh,
 		amqp:       amqp,
@@ -55,4 +55,5 @@ func (api *ApiHandler) Register(v1 *echo.Group) {
 	price := v1.Group("/price")
 	price.POST("", api.createPrice)
 	price.GET("", api.getPrices)
+	price.GET("/last/:shopId/:productId", api.getLastUpdatedPrice)
 }

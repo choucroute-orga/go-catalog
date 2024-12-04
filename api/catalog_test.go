@@ -165,11 +165,11 @@ func setupTest(t *testing.T) (*ApiHandler, func()) {
 		DBName:                    DBName,
 		IngredientsCollectionName: "ingredient",
 		PricesColletionName:       "price",
-		ShopsColletionName:        "shop",
+		ShopsCollectionName:       "shop",
 	}
 
 	t.Log("DBUri", DBUri)
-	dbh, err := db.New(conf)
+	dbh, err := db.NewMongoHandler(conf)
 	if err != nil {
 		t.Fatalf("Failed to create DB handler: %v", err)
 	}
@@ -258,16 +258,14 @@ func TestDB(t *testing.T) {
 				}
 
 				// Get the price and check the same value
-				filter := bson.M{"_id": priceUpdated.ID}
-				prices, err := api.dbh.GetPrices(l, filter)
+				// Check here that we get the good price
+				price, err = api.dbh.GetLastUpdatedPrice(l, priceUpdated.ShopID, priceUpdated.ProductID)
 				if err != nil {
 					t.Fatalf("Failed to get prices: %v", err)
 				}
-				if len(*prices) != 1 {
-					t.Fatalf("Expected 1 price, got %v", len(*prices))
-				}
-				if (*prices)[0].Price != 20.0 || (*prices)[0].Devise != "USD" {
-					t.Fatalf("Price not updated: %v", (*prices)[0])
+
+				if price.Price != 20.0 || price.Devise != "USD" {
+					t.Fatalf("Price not updated: %v", price)
 				}
 
 				l.Debug("Test started")

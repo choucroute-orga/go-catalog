@@ -17,11 +17,12 @@ type Configuration struct {
 	ListenAddress             string
 	ListenRoute               string
 	LogLevel                  logrus.Level
+	EventStoreURI             string
 	RabbitURI                 string
 	DBURI                     string
 	DBName                    string
 	IngredientsCollectionName string
-	ShopsColletionName        string
+	ShopsCollectionName       string
 	PricesColletionName       string
 	TranslateValidation       bool
 	JWTSecret                 string
@@ -57,11 +58,12 @@ func New() *Configuration {
 	conf.ListenAddress = os.Getenv("API_ADDRESS")
 	conf.ListenRoute = os.Getenv("API_ROUTE")
 
+	conf.EventStoreURI = os.Getenv("EVENTSTORE_URI")
 	conf.DBURI = os.Getenv("MONGODB_URI")
 
-	// Check if the DBURI is set
-	if len(conf.DBURI) < 1 {
-		logger.Error("MONGODB_URI is not set")
+	// Check if one of the event store or the DBURI is set
+	if len(conf.EventStoreURI) < 1 && len(conf.DBURI) < 1 {
+		logger.Error("EVENT_STORE_URI or MONGODB_URI is not set")
 		os.Exit(1)
 	}
 
@@ -72,21 +74,24 @@ func New() *Configuration {
 		os.Exit(1)
 	}
 
-	// Extract the dbName from the DBURI
-	// Try to split the DBURI by "/" and get the 4th element
-	splitedUri := strings.Split(conf.DBURI, "/")
-	if len(splitedUri) < 4 {
-		logger.Error("Failed to extract the DBName from the DBURI")
-		os.Exit(1)
+	// Extract the dbName from the DBURI if mongodb is used
+	if len(conf.DBURI) > 1 {
+
+		// Try to split the DBURI by "/" and get the 4th element
+		splitedUri := strings.Split(conf.DBURI, "/")
+		if len(splitedUri) < 4 {
+			logger.Error("Failed to extract the DBName from the DBURI")
+			os.Exit(1)
+		}
+		conf.DBName = splitedUri[3]
+		logger.Debug("DBName: ", conf.DBName)
 	}
-	conf.DBName = splitedUri[3]
-	logger.Debug("DBName: ", conf.DBName)
 
 	conf.IngredientsCollectionName = os.Getenv("MONGODB_INGREDIENTS_COLLECTION")
 	conf.PricesColletionName = os.Getenv("MONGODB_PRICES_COLLECTION")
-	conf.ShopsColletionName = os.Getenv("MONGODB_SHOPS_COLLECTION")
+	conf.ShopsCollectionName = os.Getenv("MONGODB_SHOPS_COLLECTION")
 
-	if len(conf.ShopsColletionName) < 1 {
+	if len(conf.ShopsCollectionName) < 1 {
 		logger.Error("MONGODB_SHOPS_COLLECTION is not set")
 		os.Exit(1)
 	}

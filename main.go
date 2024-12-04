@@ -25,9 +25,24 @@ func main() {
 
 	conf := configuration.New()
 	logger.Logger.SetLevel(conf.LogLevel)
-	dbh, err := db.New(conf)
+	var dbh db.DbHandler
+
+	mh, err := db.NewMongoHandler(conf)
 	if err != nil {
-		return
+		panic(err)
+	}
+
+	if conf.EventStoreURI != "" {
+		logger.Debug("Using EventStore in addition to Mongo with URI: ", conf.EventStoreURI)
+		eh, err := db.NewEventHandler(conf)
+		if err != nil {
+			return
+		}
+		mxh := db.NewMixedHandler(mh, eh)
+		dbh = mxh
+	} else {
+		logger.Debug("Using only MongoDB with URI: ", conf.DBURI)
+		dbh = mh
 	}
 
 	val := validation.New(conf)
@@ -44,7 +59,7 @@ func main() {
 		if err := tp.Shutdown(ctx); err != nil {
 			logger.WithError(err).Error("Error shutting down tracer provider")
 		}
-		if err := dbh.Client.Disconnect(context.TODO()); err != nil {
+		if err := dbh.Disconnect(); err != nil {
 			logger.WithError(err).Error("Error closing mongo connection")
 		}
 		if err := amqp.Close(); err != nil {
